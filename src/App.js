@@ -5,6 +5,7 @@ import { List, Input, Button } from 'antd';
 import 'antd/dist/antd.css';
 import { listNotes } from './graphql/queries';
 import {
+  updateNote as UpdateNote,
   createNote as CreateNote,
   deleteNote as DeleteNote
 } from './graphql/mutations'
@@ -23,11 +24,11 @@ function reducer(state, action) {
     case 'SET_NOTES':
       return { ...state, notes: action.notes, loading: false }
     case 'ADD_NOTE':
-      return { ...state, notes: [action.note, ...state.notes]}
+      return { ...state, notes: [action.note, ...state.notes] }
     case 'RESET_FORM':
       return { ...state, form: initialState.form }
     case 'SET_INPUT':
-      return { ...state, form: { ...state.form, [action.name]: action.value } }  
+      return { ...state, form: { ...state.form, [action.name]: action.value } }
     case 'ERROR':
       return { ...state, loading: false, error: true }
     default:
@@ -64,7 +65,7 @@ export default function App() {
   async function createNote() {
     const { form } = state
     if (!form.name || !form.description) {
-       return alert('please enter a name and description')
+      return alert('please enter a name and description')
     }
     const note = { ...form, clientId: CLIENT_ID, completed: false, id: uuid() }
     dispatch({ type: 'ADD_NOTE', note })
@@ -96,8 +97,24 @@ export default function App() {
         variables: { input: { id } }
       })
       console.log('successfully deleted note!')
-      } catch (err) {
-        console.log({ err })
+    } catch (err) {
+      console.log({ err })
+    }
+  }
+
+  async function updateNote(note) {
+    const index = state.notes.findIndex(n => n.id === note.id)
+    const notes = [...state.notes]
+    notes[index].completed = !note.completed
+    dispatch({ type: 'SET_NOTES', notes })
+    try {
+      await API.graphql({
+        query: UpdateNote,
+        variables: { input: { id: note.id, completed: notes[index].completed } }
+      })
+      console.log('note successfully updated!')
+    } catch (err) {
+      console.log('error: ', err)
     }
   }
 
@@ -106,7 +123,10 @@ export default function App() {
       <List.Item
         style={styles.item}
         actions={[
-          <p style={styles.p} onClick={() => deleteNote(item)}>Delete</p>
+          <p style={styles.p} onClick={() => deleteNote(item)}>Delete</p>,
+          <p style={styles.p} onClick={() => updateNote(item)}>
+            {item.completed ? 'completed' : 'mark completed'}
+          </p>
         ]}
       >
         <List.Item.Meta
